@@ -8,35 +8,46 @@ import math
 import matplotlib.pyplot as plt
 from SinGAN.imresize import imresize
 
-def train(opt,Gs,Zs,reals,NoiseAmp):
-    real_ = functions.read_image(opt)
-    in_s = 0
+def train(opt, Gs: list, Zs: list, reals: list, masks: list, NoiseAmp: list,
+          real:torch.Tensor=None, mask: torch.Tensor=None):
+
+    assert isinstance(real,torch.Tensor), "At least, real image must be provided."
+    if opt.need_mask and not isinstance(mask,torch.Tensor):
+        print("On 'gradient_mask'/'disc_map_mask'/'z_rec_mask' a mask (torch.Tensor) must be provided.")
+    elif opt.need_mask and isinstance(mask,torch.Tensor):
+        assert real.shape == mask.shape, "real & mask shapes must be equal."
+
+    in_s      = 0
     scale_num = 0
-    real = imresize(real_,opt.scale1,opt)
-    reals = functions.creat_reals_pyramid(real,reals,opt)
-    nfc_prev = 0
+    reals     = functions.creat_reals_pyramid(real,reals,opt)
+    if opt.need_mask:
+        masks = functions.creat_masks_pyramid(mask,masks,opt)
+        if opt.plotting:
+            for i, (r,m) in enumerate(zip(reals,masks)):
+                functions.plot_minibatch(torch.cat((r,m,r*m), dim=0),
+                                         f'real | mask | real * mask | scale={i} | shape={r.shape}', opt)
+    nfc_prev  = 0
 
     while scale_num<opt.stop_scale+1:
-        opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
+        opt.nfc     = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
         opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale_num / 4)), 128)
-
-        opt.out_ = functions.generate_dir2save(opt)
-        opt.outf = '%s/%d' % (opt.out_,scale_num)
+        opt.outf    = '%s/%d' % (opt.out_,scale_num)
         try:
             os.makedirs(opt.outf)
         except OSError:
-                pass
+            print(f"Could not create {opt.outf}. Aborting.")
+            exit(100)
 
-        #plt.imsave('%s/in.png' %  (opt.out_), functions.convert_image_np(real), vmin=0, vmax=1)
-        #plt.imsave('%s/original.png' %  (opt.out_), functions.convert_image_np(real_), vmin=0, vmax=1)
-        plt.imsave('%s/real_scale.png' %  (opt.outf), functions.convert_image_np(reals[scale_num]), vmin=0, vmax=1)
+        plt.imsave('%s/%s.%s.png' % (opt.outf, opt.input_name[:-4],
+                                     ''.join(['{}x'.format(s) for s in reals[scale_num].shape])[:-1]),
+                   functions.convert_image_np(reals[scale_num]), vmin=0, vmax=1)
 
         D_curr,G_curr = init_models(opt)
         if (nfc_prev==opt.nfc):
             G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
             D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
-        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,Gs,Zs,in_s,NoiseAmp,opt)
+        z_curr,in_s,G_curr = train_single_scale(D_curr, G_curr, reals, masks, Gs, Zs, in_s, NoiseAmp, opt)
 
         G_curr = functions.reset_grads(G_curr,False)
         G_curr.eval()
@@ -59,22 +70,36 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
 
 
 
-def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
+def train_single_scale(netD, netG, reals, masks, Gs, Zs, in_s, NoiseAmp, opt, centers=None):
 
     real = reals[len(Gs)]
-    opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer)
-    opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer)
+    if opt.need_mask:
+        mask = masks[len(Gs)]
+
+    opt.nzx             = real.shape[2]
+    opt.nzy             = real.shape[3]
     opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
+
     pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
+
     if opt.mode == 'animation_train':
         opt.nzx = real.shape[2]+(opt.ker_size-1)*(opt.num_layer)
         opt.nzy = real.shape[3]+(opt.ker_size-1)*(opt.num_layer)
         pad_noise = 0
+
     m_noise = nn.ZeroPad2d(int(pad_noise))
     m_image = nn.ZeroPad2d(int(pad_image))
 
     alpha = opt.alpha
+
+    if opt.need_mask:
+        _, c, h, w = mask.shape
+        if 'gradient_mask' in opt.train_mode:
+            gmask = mask.clone()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
+            gmask /= (torch.nonzero(gmask, as_tuple=True)[0].shape[0])
+        if 'disc_map_mask' in opt.train_mode:
+            dmask = mask.clone()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
 
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
     z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
@@ -94,8 +119,9 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
 
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
-            z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
-            z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
+            if epoch == 0:
+                z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
+                z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
             noise_ = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
             noise_ = m_noise(noise_.expand(1,3,opt.nzx,opt.nzy))
         else:
@@ -110,9 +136,31 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             netD.zero_grad()
 
             output = netD(real).to(opt.device)
-            #D_real_map = output.detach()
-            errD_real = -output.mean()#-a
-            errD_real.backward(retain_graph=True)
+
+            if 'disc_map_mask' in opt.train_mode:
+                output = output * dmask
+                if opt.plotting:
+                    functions.plot_minibatch(torch.cat((output.detach(), dmask), dim=0),
+                                             f'epoch={epoch} | Dstep={j} | '
+                                             f'disc. map * dmask | dmask | shape={dmask.shape}', opt)
+            if 'gradient_mask' in opt.train_mode:
+                if opt.plotting:
+                    functions.plot_minibatch(gmask,f'epoch={epoch} | Dstep={j} | '
+                                                   f'gmask | shape={gmask.shape}', opt)
+            errD_real = -output.mean()
+
+            # TODO: backward debug hooks. uncomment to use. (manorz, 20/01/20)
+            # def print_gradients_hook(grad):
+            #     print(grad, grad.shape, end='\n' + '*' * 100 + '\n')
+            #     return grad
+            # errD_real.register_hook(print_gradients_hook)
+            # output.register_hook(print_gradients_hook)
+
+            if 'disc_map_mask' in opt.train_mode:
+                errD_real.backward(retain_graph=True)
+            elif 'gradient_mask' in opt.train_mode:
+                output.backward(gradient=gmask, retain_graph=True)
+
             D_x = -errD_real.item()
 
             # train with fake
@@ -182,7 +230,18 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
                     z_prev = functions.quant2centers(z_prev, centers)
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
-                rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev),real)
+
+                netG_out = netG(Z_opt.detach(),z_prev)
+
+                if 'z_rec_mask' in opt.train_mode:
+                    netG_out = netG_out * mask
+                    if opt.plotting:
+                        functions.plot_minibatch(torch.cat((netG_out.detach(), mask), dim=0),
+                                                 f'epoch={epoch} | Gstep={j} | '
+                                                 f'gen. output * mask | mask | shape={mask.shape}', opt)
+
+
+                rec_loss = alpha*loss(netG_out,real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:
@@ -202,14 +261,6 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
         if epoch % 500 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
-            #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
-            #plt.imsave('%s/z_opt.png'    % (opt.outf), functions.convert_image_np(z_opt.detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/prev.png'     %  (opt.outf), functions.convert_image_np(prev), vmin=0, vmax=1)
-            #plt.imsave('%s/noise.png'    %  (opt.outf), functions.convert_image_np(noise), vmin=0, vmax=1)
-            #plt.imsave('%s/z_prev.png'   % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
-
-
             torch.save(z_opt, '%s/z_opt.pth' % (opt.outf))
 
         schedulerD.step()

@@ -193,16 +193,15 @@ def save_networks(netG,netD,z,opt):
     torch.save(z, '%s/z_opt.pth' % (opt.outf))
 
 def adjust_scales2image(real_,opt):
-    #opt.num_scales = int((math.log(math.pow(opt.min_size / (real_.shape[2]), 1), opt.scale_factor_init))) + 1
-    opt.num_scales = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor_init))) + 1
-    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
-    opt.stop_scale = opt.num_scales - scale2stop
-    opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
-    real = imresize(real_, opt.scale1, opt)
-    #opt.scale_factor = math.pow(opt.min_size / (real.shape[2]), 1 / (opt.stop_scale))
+    opt.num_scales   = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor_init))) + 1
+    scale2stop       = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
+    opt.stop_scale   = opt.num_scales - scale2stop
+    opt.scale1       = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)
+    real             = imresize(real_, opt.scale1, opt)
     opt.scale_factor = math.pow(opt.min_size/(min(real.shape[2],real.shape[3])),1/(opt.stop_scale))
-    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
-    opt.stop_scale = opt.num_scales - scale2stop
+    # TODO: duplicate scale2stop & opt.stop_scale? (manorz, 01/21/19)
+    scale2stop       = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
+    opt.stop_scale   = opt.num_scales - scale2stop
     return real
 
 def adjust_scales2image_SR(real_,opt):
@@ -226,6 +225,16 @@ def creat_reals_pyramid(real,reals,opt):
         reals.append(curr_real)
     return reals
 
+def creat_masks_pyramid(mask,masks,opt):
+    mask = mask[:,0:3,:,:]
+    for i in range(0,opt.stop_scale+1,1):
+        curr_scale = math.pow(opt.scale_factor,opt.stop_scale-i)
+        curr_bbox  = [int(np.ceil(bb*curr_scale)) for bb in opt.bbox]
+        curr_mask  = imresize(mask,curr_scale,opt)
+        curr_mask  = torch.ones_like(curr_mask)
+        curr_mask[:, :, curr_bbox[1]:curr_bbox[3], curr_bbox[0]:curr_bbox[2]] = 0
+        masks.append(curr_mask)
+    return masks
 
 def load_trained_pyramid(opt, mode_='train'):
     #dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
@@ -354,3 +363,11 @@ def dilate_mask(mask,opt):
     return mask
 
 
+import torchvision.utils as vutils
+def plot_minibatch(minibatch: torch.Tensor, title, opt):
+    plt.figure(figsize=(12, 12))
+    plt.axis("off")
+    if title:
+        plt.title(title)
+    plt.imshow(np.transpose(vutils.make_grid(minibatch.to(opt.device), normalize=True).cpu(), (1, 2, 0)))
+    plt.show()
