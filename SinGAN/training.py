@@ -156,10 +156,14 @@ def train_single_scale(netD, netG, reals, masks, Gs, Zs, in_s, NoiseAmp, opt, ce
             # errD_real.register_hook(print_gradients_hook)
             # output.register_hook(print_gradients_hook)
 
-            if 'disc_map_mask' in opt.train_mode:
-                errD_real.backward(retain_graph=True)
-            elif 'gradient_mask' in opt.train_mode:
+            if 'gradient_mask' in opt.train_mode:
+                if opt.debug:
+                    print('[debug] - output.backward')
                 output.backward(gradient=gmask, retain_graph=True)
+            else:
+                if opt.debug:
+                    print('[debug] - errD_real.backward')
+                errD_real.backward(retain_graph=True)
 
             D_x = -errD_real.item()
 
