@@ -15,6 +15,7 @@ if __name__ == '__main__':
     # for random_samples_arbitrary_sizes:
     parser.add_argument('--scale_h', type=float, help='horizontal resize factor for random samples', default=1.5)
     parser.add_argument('--scale_v', type=float, help='vertical resize factor for random samples', default=1)
+    parser.add_argument('--model_dir', required=True)
     opt = parser.parse_args()
     opt = functions.post_config(opt)
     Gs = []

@@ -237,17 +237,23 @@ def creat_masks_pyramid(mask,masks,opt):
     return masks
 
 def load_trained_pyramid(opt, mode_='train'):
-    #dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
+    # dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
+    dir = opt.model_dir
+    print(f'[debug] - model directory:\n'
+          f'          {dir}')
     mode = opt.mode
     opt.mode = 'train'
     if (mode == 'animation_train') | (mode == 'SR_train') | (mode == 'paint_train'):
         opt.mode = mode
-    dir = generate_dir2save(opt)
+    # dir = generate_dir2save(opt)
     if(os.path.exists(dir)):
-        Gs = torch.load('%s/Gs.pth' % dir)
-        Zs = torch.load('%s/Zs.pth' % dir)
-        reals = torch.load('%s/reals.pth' % dir)
-        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir)
+        # TODO: in order to save on GPU but load to CPU (manorz, 12/06/19)
+        print(f'[debug] - load from \n'
+              f'          {dir}')
+        Gs = torch.load('%s/Gs.pth' % dir,             map_location=opt.device)
+        Zs = torch.load('%s/Zs.pth' % dir,             map_location=opt.device)
+        reals = torch.load('%s/reals.pth' % dir,       map_location=opt.device)
+        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir, map_location=opt.device)
     else:
         print('no appropriate trained model is exist, please train first')
     opt.mode = mode
