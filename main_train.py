@@ -59,6 +59,7 @@ def main_train(opt):
     real  = functions.adjust_scales2image(real_, opt)
     plt.imsave('%s/%s.%s.png' % (opt.out_, opt.input_name[:-4], ''.join(['{}x'.format(s) for s in real.shape])[:-1]),
                functions.convert_image_np(real.detach()), vmin=0, vmax=1)
+    mask = None
     if opt.need_mask:
         mask  = create_first_mask(real,opt)
         if opt.plotting:
@@ -68,9 +69,8 @@ def main_train(opt):
             )
         plt.imsave('%s/mask.%s.png' % (opt.out_, ''.join(['{}x'.format(s) for s in mask.shape])[:-1]),
                functions.convert_image_np(mask.detach()), vmin=0, vmax=1)
-        train(opt, Gs, Zs, reals, masks, NoiseAmp, real=real, mask=mask)
-    else:
-        train(opt, Gs, Zs, reals, masks, NoiseAmp, real=real, mask=None)
+
+    train(opt, Gs, Zs, reals, masks, NoiseAmp, real=real, mask=mask)
 
 
 if __name__ == '__main__':

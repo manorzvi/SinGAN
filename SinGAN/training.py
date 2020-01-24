@@ -149,7 +149,7 @@ def train_single_scale(netD, netG, reals, masks, Gs, Zs, in_s, NoiseAmp, opt, ce
                                                    f'gmask | shape={gmask.shape}', opt)
             errD_real = -output.mean()
 
-            # TODO: backward debug hooks. uncomment to use. (manorz, 20/01/20)
+            # # TODO: backward debug hooks. uncomment to use. (manorz, 20/01/20)
             # def print_gradients_hook(grad):
             #     print(grad, grad.shape, end='\n' + '*' * 100 + '\n')
             #     return grad
