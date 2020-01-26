@@ -74,19 +74,19 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     m_noise = nn.ZeroPad2d(int(pad_noise))
     m_image = nn.ZeroPad2d(int(pad_image))
 
-alpha = opt.alpha
+    alpha = opt.alpha
 
-    ### we have 2 options to generate noise:
-    ###   (i)  generate a single-channel noise, and expand it to all 3 input channels.
-    ###   (ii) generate different noise for all 3 input channels.
+    if opt.variability == 0:
+        z_opt = torch.full([opt.nc_z,opt.nzx,opt.nzy], 0, device=opt.device)
+        z_opt = m_noise(z_opt)
+    
+    if opt.variability == 1:
+        z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
+        z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
 
-    ### (i)
-    z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
-    z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
-
-    ### (ii)
-    # z_opt = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device)
-    # z_opt = m_noise(z_opt)
+    if opt.variability == 2:
+        z_opt = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device)
+        z_opt = m_noise(z_opt)
 
     # setup optimizer
     optimizerD = optim.Adam(netD.parameters(), lr=opt.lr_d, betas=(opt.beta1, 0.999))
@@ -102,8 +102,9 @@ alpha = opt.alpha
 
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
-            z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
-            z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
+            if opt.variability == 0:
+                z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
+                z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
             noise_ = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
             noise_ = m_noise(noise_.expand(1,3,opt.nzx,opt.nzy))
         else:
