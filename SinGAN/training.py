@@ -1,12 +1,15 @@
 import SinGAN.functions as functions
 import SinGAN.models as models
 import os
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 import math
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from SinGAN.imresize import imresize
+import torchvision.utils as vutils
 
 def train(opt,Gs,Zs,reals,NoiseAmp):
     real_ = functions.read_image(opt)
@@ -15,9 +18,43 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
     real = imresize(real_,opt.scale1,opt)
     reals = functions.creat_reals_pyramid(real,reals,opt)
     nfc_prev = 0
+    if opt.mode == 'receptive_field':
+        num_layer_prev = 0
+        functions.create_bboxes_pyramid(opt)
+
+    if opt.mode == 'receptive_field' and opt.plotting:
+        receptive_field = opt.num_layer * (opt.ker_size - 1) + 1
+        h,w = int(np.ceil(np.sqrt(len(reals)))),int(np.ceil(np.sqrt(len(reals))))
+        fig, axes = plt.subplots(h,w)
+        for i,(im,bb) in enumerate(zip(reals,opt.bboxes)):
+            ai = int(i/h)
+            aj = int(i%w)
+            upleftx,uplefty = bb[0],bb[1]
+            offsetx,offsety = bb[2]-bb[0],bb[3]-bb[1]
+            axes[ai,aj].set_title(i)
+            axes[ai,aj].imshow(np.transpose(vutils.make_grid(im.to(opt.device), normalize=True).cpu(), (1, 2, 0)))
+            rect = patches.Rectangle((upleftx,uplefty), offsetx, offsety,
+                                     linewidth=1, edgecolor='r', facecolor='none')
+            if i == len(reals)-1:
+                rect.set_label('area of interest')
+            axes[ai,aj].add_patch(rect)
+            axes[ai,aj].annotate(f'size={offsetx}x{offsety}', xy=(upleftx,uplefty),c='r')
+            receptive_field_rect = patches.Rectangle((upleftx,uplefty), receptive_field, receptive_field,
+                                                     linewidth=1, edgecolor='b', facecolor='none')
+            if i == len(reals)-1:
+                receptive_field_rect.set_label('receptive field')
+            axes[ai,aj].add_patch(receptive_field_rect)
+            axes[ai, aj].annotate(f'size={receptive_field}x{receptive_field}',
+                                  xy=(upleftx+receptive_field, uplefty+receptive_field), c='b')
+        plt.legend()
+        plt.tight_layout()
+        dir2save = functions.generate_dir2save(opt)
+        plt.savefig(f'{dir2save}/rf_vs_aoi.png',dpi=200)
+
+        plt.show()
 
     while scale_num<opt.stop_scale+1:
-        opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
+        opt.nfc     = min(opt.nfc_init     * pow(2, math.floor(scale_num / 4)), 128)
         opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale_num / 4)), 128)
 
         opt.out_ = functions.generate_dir2save(opt)
@@ -31,10 +68,36 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
         #plt.imsave('%s/original.png' %  (opt.out_), functions.convert_image_np(real_), vmin=0, vmax=1)
         plt.imsave('%s/real_scale.png' %  (opt.outf), functions.convert_image_np(reals[scale_num]), vmin=0, vmax=1)
 
+        if opt.mode == 'receptive_field':
+            # Currently number of layers, combined with the kernel size, strides & padding manually design to
+            # create receptive field with size 11x11.
+            # Here for each scale we set the number of layers to create receptive field with size greater than the
+            # size of our aoi.
+            # Receptive field formula: Rout = Rin + (K-1)*Jin , Jout = Jin*S , R0=1 , J0=1
+            # Under kernel size fixed to 3x3, stride fixed to 1x1, the formula degenerates to:
+            # Rout = <NUM LAYERS> * 2 + 1 => <NUM LAYERS> = CEIL((Rout-1)/2)
+            # TODO: Need to increase kernel size accordingly, in order to reduce inflation in layers number in the
+            #  higher scales. (manorz, 03/05/20)
+            opt.receptive_field = opt.ker_size + ((opt.ker_size - 1) * (opt.num_layer - 1)) * opt.stride
+            aoi = max(opt.receptive_field, max(opt.bboxes[scale_num][2]-opt.bboxes[scale_num][0],
+                                               opt.bboxes[scale_num][3]-opt.bboxes[scale_num][1]))
+            opt.num_layer = int(np.ceil((aoi-1))/(opt.ker_size-1))
+            print(f'[debug] - scale = {scale_num} | aoi = {aoi} | number of layers = {opt.num_layer}')
+
         D_curr,G_curr = init_models(opt)
-        if (nfc_prev==opt.nfc):
-            G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
-            D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
+
+        # TODO: ask tamarott about that.
+        #  Each pair of gen-disc models, copy its parameters from previous scale pair (if the structure hasn't changed).
+        #  What the reason for that?
+        #  I guess it accelerate the training process but with a price of harming the exploration. (manorz, 03/05/20)
+        if opt.mode == 'receptive_field':
+            if nfc_prev == opt.nfc and num_layer_prev == opt.num_layer:
+                G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_, scale_num - 1)))
+                D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_, scale_num - 1)))
+        else:
+            if (nfc_prev==opt.nfc):
+                G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
+                D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
         z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,Gs,Zs,in_s,NoiseAmp,opt)
 
@@ -54,9 +117,10 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
 
         scale_num+=1
         nfc_prev = opt.nfc
+        if opt.mode == 'receptive_field':
+            num_layer_prev = opt.num_layer
         del D_curr,G_curr
     return
-
 
 
 def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
@@ -64,7 +128,7 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     real = reals[len(Gs)]
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer)
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer)
-    opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
+    # opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
     pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     if opt.mode == 'animation_train':
@@ -86,16 +150,17 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     schedulerD = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerD,milestones=[1600],gamma=opt.gamma)
     schedulerG = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerG,milestones=[1600],gamma=opt.gamma)
 
-    errD2plot = []
-    errG2plot = []
+    errD2plot   = []
+    errG2plot   = []
     D_real2plot = []
     D_fake2plot = []
-    z_opt2plot = []
+    z_opt2plot  = []
 
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
-            z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
-            z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
+            if epoch == 0:
+                z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
+                z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
             noise_ = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
             noise_ = m_noise(noise_.expand(1,3,opt.nzx,opt.nzy))
         else:
@@ -110,7 +175,7 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             netD.zero_grad()
 
             output = netD(real).to(opt.device)
-            #D_real_map = output.detach()
+            D_real_map = output.detach()
             errD_real = -output.mean()#-a
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
@@ -173,7 +238,7 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
         for j in range(opt.Gsteps):
             netG.zero_grad()
             output = netD(fake)
-            #D_fake_map = output.detach()
+            D_fake_map = output.detach()
             errG = -output.mean()
             errG.backward(retain_graph=True)
             if alpha!=0:
@@ -200,14 +265,14 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
 
         if epoch % 500 == 0 or epoch == (opt.niter-1):
-            plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
-            plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
-            #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
-            #plt.imsave('%s/z_opt.png'    % (opt.outf), functions.convert_image_np(z_opt.detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/prev.png'     %  (opt.outf), functions.convert_image_np(prev), vmin=0, vmax=1)
-            #plt.imsave('%s/noise.png'    %  (opt.outf), functions.convert_image_np(noise), vmin=0, vmax=1)
-            #plt.imsave('%s/z_prev.png'   % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
+            plt.imsave('%s/fake_sample.png' % (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
+            plt.imsave('%s/G(z_opt).png'    % (opt.outf), functions.convert_image_np(netG(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
+            plt.imsave('%s/D_fake.png'      % (opt.outf), functions.convert_image_np(D_fake_map))
+            plt.imsave('%s/D_real.png'      % (opt.outf), functions.convert_image_np(D_real_map))
+            plt.imsave('%s/z_opt.png'       % (opt.outf), functions.convert_image_np(z_opt.detach()), vmin=0, vmax=1)
+            plt.imsave('%s/prev.png'        % (opt.outf), functions.convert_image_np(prev), vmin=0, vmax=1)
+            plt.imsave('%s/noise.png'       % (opt.outf), functions.convert_image_np(noise), vmin=0, vmax=1)
+            plt.imsave('%s/z_prev.png'      % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
 
 
             torch.save(z_opt, '%s/z_opt.pth' % (opt.outf))
@@ -217,6 +282,7 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
 
     functions.save_networks(netG,netD,z_opt,opt)
     return z_opt,in_s,netG    
+
 
 def draw_concat(Gs,Zs,reals,NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
@@ -253,6 +319,7 @@ def draw_concat(Gs,Zs,reals,NoiseAmp,in_s,mode,m_noise,m_image,opt):
                 #    G_z = m_image(G_z)
                 count += 1
     return G_z
+
 
 def train_paint(opt,Gs,Zs,reals,NoiseAmp,centers,paint_inject_scale):
     in_s = torch.full(reals[0].shape, 0, device=opt.device)

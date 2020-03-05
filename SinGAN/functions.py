@@ -195,7 +195,7 @@ def save_networks(netG,netD,z,opt):
 def adjust_scales2image(real_,opt):
     #opt.num_scales = int((math.log(math.pow(opt.min_size / (real_.shape[2]), 1), opt.scale_factor_init))) + 1
     opt.num_scales = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor_init))) + 1
-    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
+    scale2stop     = math.ceil( math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
     opt.stop_scale = opt.num_scales - scale2stop
     opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
     real = imresize(real_, opt.scale1, opt)
@@ -226,6 +226,13 @@ def creat_reals_pyramid(real,reals,opt):
         reals.append(curr_real)
     return reals
 
+def create_bboxes_pyramid(opt):
+    opt.bboxes = []
+    for i in range(0, opt.stop_scale + 1, 1):
+        scale = math.pow(opt.scale_factor, opt.stop_scale - i)
+        bbox = [int(np.ceil(bb * scale)) for bb in opt.bbox]
+        # print(f'{i}) scale={scale}, bbox={curr_bbox}')
+        opt.bboxes.append(bbox)
 
 def load_trained_pyramid(opt, mode_='train'):
     #dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
@@ -235,10 +242,10 @@ def load_trained_pyramid(opt, mode_='train'):
         opt.mode = mode
     dir = generate_dir2save(opt)
     if(os.path.exists(dir)):
-        Gs = torch.load('%s/Gs.pth' % dir)
-        Zs = torch.load('%s/Zs.pth' % dir)
-        reals = torch.load('%s/reals.pth' % dir)
-        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir)
+        Gs = torch.load('%s/Gs.pth' % dir, map_location=opt.device)
+        Zs = torch.load('%s/Zs.pth' % dir, map_location=opt.device)
+        reals = torch.load('%s/reals.pth' % dir, map_location=opt.device)
+        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir, map_location=opt.device)
     else:
         print('no appropriate trained model is exist, please train first')
     opt.mode = mode
@@ -257,6 +264,9 @@ def generate_dir2save(opt):
     dir2save = None
     if (opt.mode == 'train') | (opt.mode == 'SR_train'):
         dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name[:-4], opt.scale_factor_init,opt.alpha)
+    elif opt.mode == 'receptive_field':
+        dir2save = 'TrainedModels/{}/scale_factor={:.2f},alpha={},mode={}'.format(
+            opt.input_name[:-4], opt.scale_factor_init, opt.alpha, opt.mode)
     elif (opt.mode == 'animation_train') :
         dir2save = 'TrainedModels/%s/scale_factor=%f_noise_padding' % (opt.input_name[:-4], opt.scale_factor_init)
     elif (opt.mode == 'paint_train') :

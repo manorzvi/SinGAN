@@ -44,7 +44,9 @@ class GeneratorConcatSkip2CleanAdd(nn.Module):
         super(GeneratorConcatSkip2CleanAdd, self).__init__()
         self.is_cuda = torch.cuda.is_available()
         N = opt.nfc
-        self.head = ConvBlock(opt.nc_im,N,opt.ker_size,opt.padd_size,1) #GenConvTransBlock(opt.nc_z,N,opt.ker_size,opt.padd_size,opt.stride)
+        self.head = ConvBlock(in_channel=opt.nc_im, out_channel=N,
+                              ker_size=opt.ker_size,padd=opt.padd_size,stride=1)
+
         self.body = nn.Sequential()
         for i in range(opt.num_layer-2):
             N = int(opt.nfc/pow(2,(i+1)))
