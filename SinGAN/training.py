@@ -197,7 +197,9 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
                     z_prev = functions.quant2centers(z_prev, centers)
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
-                rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev),real)
+                netG_out = netG(Z_opt.detach(),z_prev)
+                netG_out.mul(mask)
+                rec_loss = alpha*loss(netG_out,real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:
