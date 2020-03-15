@@ -5,15 +5,17 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 import math
+import torch
 import matplotlib.pyplot as plt
 from SinGAN.imresize import imresize
 
-def train(opt,Gs,Zs,reals,NoiseAmp):
+def train(opt,Gs,Zs,reals,masks,NoiseAmp):
     real_ = functions.read_image(opt)
     in_s = 0
     scale_num = 0
     real = imresize(real_,opt.scale1,opt)
-    reals = functions.creat_reals_pyramid(real,reals,opt)
+    reals = functions.create_reals_pyramid(real,reals,opt)
+    masks = functions.create_masks_pyramid(real,masks,opt)
     nfc_prev = 0
 
     while scale_num<opt.stop_scale+1:
@@ -36,7 +38,7 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
             G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
             D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
-        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,Gs,Zs,in_s,NoiseAmp,opt)
+        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,masks,Gs,Zs,in_s,NoiseAmp,opt)
 
         G_curr = functions.reset_grads(G_curr,False)
         G_curr.eval()
@@ -59,9 +61,10 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
 
 
 
-def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
+def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
 
     real = reals[len(Gs)]
+    mask = masks[len(Gs)]
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer)
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer)
     opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
@@ -75,6 +78,10 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     m_image = nn.ZeroPad2d(int(pad_image))
 
     alpha = opt.alpha
+
+    _, c, h, w = mask.size()
+    discriminators_mask = mask.detach()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
+    _, c, h, w = discriminators_mask.size()
 
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
     z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
@@ -109,9 +116,14 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             # train with real
             netD.zero_grad()
 
+            norm = (h * w) / discriminators_mask.sum()
             output = netD(real).to(opt.device)
+            output.mul(discriminators_mask * norm)
             #D_real_map = output.detach()
-            errD_real = -output.mean()#-a
+            errD_real = -output.mean() #-a
+            if epoch % 25 == 0 or epoch == (opt.niter-1):
+                print('errD_real %f' % errD_real)
+
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
 
@@ -155,6 +167,9 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             fake = netG(noise.detach(),prev)
             output = netD(fake.detach())
             errD_fake = output.mean()
+            if epoch % 25 == 0 or epoch == (opt.niter-1):
+                print('errD_fake %f' % errD_fake)
+
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -216,7 +231,7 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
         schedulerG.step()
 
     functions.save_networks(netG,netD,z_opt,opt)
-    return z_opt,in_s,netG    
+    return z_opt,in_s,netG
 
 def draw_concat(Gs,Zs,reals,NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s

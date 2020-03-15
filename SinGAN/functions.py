@@ -218,7 +218,7 @@ def adjust_scales2image_SR(real_,opt):
     opt.stop_scale = opt.num_scales - scale2stop
     return real
 
-def creat_reals_pyramid(real,reals,opt):
+def create_reals_pyramid(real,reals,opt):
     real = real[:,0:3,:,:]
     for i in range(0,opt.stop_scale+1,1):
         scale = math.pow(opt.scale_factor,opt.stop_scale-i)
@@ -226,6 +226,16 @@ def creat_reals_pyramid(real,reals,opt):
         reals.append(curr_real)
     return reals
 
+def create_masks_pyramid(real,masks,opt):
+    real = real[:,0:3,:,:]
+    for i in range(0,opt.stop_scale+1,1):
+        scale = math.pow(opt.scale_factor,opt.stop_scale-i)
+        curr_real = imresize(real,scale,opt)
+        curr_mask = torch.ones_like(curr_real)
+        curr_coords = [int(np.ceil(coord*scale)) for coord in opt.mask_coords]
+        curr_mask[:, :, curr_coords[0]:curr_coords[1], curr_coords[2]:curr_coords[3]] = 0
+        masks.append(curr_mask)
+    return masks
 
 def load_trained_pyramid(opt, mode_='train'):
     #dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
@@ -334,7 +344,6 @@ def quant2centers(paint, centers):
 
     return paint
 
-
 def dilate_mask(mask,opt):
     if opt.mode == "harmonization":
         element = morphology.disk(radius=7)
@@ -352,5 +361,3 @@ def dilate_mask(mask,opt):
     plt.imsave('%s/%s_mask_dilated.png' % (opt.ref_dir, opt.ref_name[:-4]), convert_image_np(mask), vmin=0,vmax=1)
     mask = (mask-mask.min())/(mask.max()-mask.min())
     return mask
-
-
