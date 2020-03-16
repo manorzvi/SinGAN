@@ -79,9 +79,9 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     alpha = opt.alpha
 
-    _, c, h, w = mask.size()
+    _, _, h, w = mask.size()
     discriminators_mask = mask.detach()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
-    _, c, h, w = discriminators_mask.size()
+    _, _, h, w = discriminators_mask.size()
 
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
     z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
@@ -118,7 +118,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
             norm = (h * w) / discriminators_mask.sum()
             output = netD(real).to(opt.device)
-            output.mul(discriminators_mask * norm)
+            output = output * discriminators_mask * norm
             #D_real_map = output.detach()
             errD_real = -output.mean() #-a
             if epoch % 25 == 0 or epoch == (opt.niter-1):
@@ -198,7 +198,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
                 netG_out = netG(Z_opt.detach(),z_prev)
-                netG_out.mul(mask)
+                netG_out = netG_out * mask
                 rec_loss = alpha*loss(netG_out,real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()

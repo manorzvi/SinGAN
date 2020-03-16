@@ -236,7 +236,6 @@ def create_masks_pyramid(real,masks,opt):
         curr_real = imresize(real,scale,opt)
         curr_mask = torch.ones_like(curr_real)
         curr_coords = [int(np.ceil(coord*scale)) for coord in opt.mask_coords]
-        print(curr_coords)
         curr_mask[:, :, curr_coords[0]:curr_coords[1], curr_coords[2]:curr_coords[3]] = 0
         masks.append(curr_mask)
     return masks
