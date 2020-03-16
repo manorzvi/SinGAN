@@ -198,8 +198,9 @@ def adjust_scales2image(real_,opt):
     scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
     opt.stop_scale = opt.num_scales - scale2stop
     opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
-    for i in range(0,len(opt.mask_coords)):
-        opt.mask_coords[i] = opt.mask_coords[i] * opt.scale1
+    #taking spare pixels for mask in case needed
+    opt.mask_coords[::2] = np.floor(np.array(opt.mask_coords[::2]).astype(np.float) * opt.scale1)
+    opt.mask_coords[1::2] = np.ceil(np.array(opt.mask_coords[1::2]).astype(np.float) * opt.scale1)
     real = imresize(real_, opt.scale1, opt)
     #opt.scale_factor = math.pow(opt.min_size / (real.shape[2]), 1 / (opt.stop_scale))
     opt.scale_factor = math.pow(opt.min_size/(min(real.shape[2],real.shape[3])),1/(opt.stop_scale))
@@ -235,6 +236,7 @@ def create_masks_pyramid(real,masks,opt):
         curr_real = imresize(real,scale,opt)
         curr_mask = torch.ones_like(curr_real)
         curr_coords = [int(np.ceil(coord*scale)) for coord in opt.mask_coords]
+        print(curr_coords)
         curr_mask[:, :, curr_coords[0]:curr_coords[1], curr_coords[2]:curr_coords[3]] = 0
         masks.append(curr_mask)
     return masks
