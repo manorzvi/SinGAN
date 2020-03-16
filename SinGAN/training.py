@@ -81,6 +81,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     _, _, h, w = mask.size()
     discriminators_mask = mask.detach()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
+
     _, _, h, w = discriminators_mask.size()
 
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
@@ -101,8 +102,9 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
-            z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
-            z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
+            if (epoch == 0):
+                z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
+                z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
             noise_ = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
             noise_ = m_noise(noise_.expand(1,3,opt.nzx,opt.nzy))
         else:
@@ -116,9 +118,9 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             # train with real
             netD.zero_grad()
 
-            norm = (h * w) / discriminators_mask.sum()
+            norm = (h*w)/discriminators_mask.sum()
             output = netD(real).to(opt.device)
-            output = output * discriminators_mask * norm
+            output = output*discriminators_mask*norm
             #D_real_map = output.detach()
             errD_real = -output.mean() #-a
             if epoch % 25 == 0 or epoch == (opt.niter-1):
@@ -198,7 +200,8 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
                 netG_out = netG(Z_opt.detach(),z_prev)
-                netG_out = netG_out * mask
+                netG_out = netG_out*mask
+                real = real*mask
                 rec_loss = alpha*loss(netG_out,real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
