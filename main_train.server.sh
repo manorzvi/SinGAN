@@ -12,3 +12,10 @@ python -c 'print("We are harvesting the power of CS faculty for our needs! ya we
 
 python main_train.py --input_name nature5.jpg --input_dir Input/Images --mask_coords "(1245,1875),(1495,2080)" --norm 0
 python main_train.py --input_name nature6.jpg --input_dir Input/Images --mask_coords "(1150,2700),(2450,3050)" --norm 0
+
+python main_train.py --input_name nature5.jpg --input_dir Input/Images --mask_coords "(1245,1875),(1495,2080)" --norm 0 --min_size 50
+python main_train.py --input_name nature6.jpg --input_dir Input/Images --mask_coords "(1150,2700),(2450,3050)" --norm 0 --min_size 50
+
+python main_train.py --input_name nature5.jpg --input_dir Input/Images --mask_coords "(1245,1875),(1495,2080)" --norm 0 --min_size 50 --max_size 500
+python main_train.py --input_name nature6.jpg --input_dir Input/Images --mask_coords "(1150,2700),(2450,3050)" --norm 0 --min_size 50 --max_size 500
+
