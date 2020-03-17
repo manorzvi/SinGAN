@@ -7,6 +7,7 @@ import torch.utils.data
 import math
 import torch
 import matplotlib.pyplot as plt
+import pickle
 from SinGAN.imresize import imresize
 
 def train(opt,Gs,Zs,reals,masks,NoiseAmp):
@@ -17,6 +18,12 @@ def train(opt,Gs,Zs,reals,masks,NoiseAmp):
     reals = functions.create_reals_pyramid(real,reals,opt)
     masks = functions.create_masks_pyramid(real,masks,opt)
     nfc_prev = 0
+
+    if opt.plotting:
+        for i, (r,m) in enumerate(zip(reals,masks)):
+                functions.plot_minibatch(torch.cat((r,m,r*m), dim=0),
+                                         f'real | mask | real * mask | scale={i} | shape={r.shape}', opt)
+
 
     while scale_num<opt.stop_scale+1:
         opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
@@ -65,6 +72,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     real = reals[len(Gs)]
     mask = masks[len(Gs)]
+
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer)
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer)
     opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
@@ -84,6 +92,10 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
     discriminators_mask_not = (1-discriminators_mask).detach()
     _, _, h, w = discriminators_mask.size()
 
+    if opt.plotting:
+        functions.plot_minibatch(torch.cat((discriminators_mask,discriminators_mask_not), dim=0),
+                                 f'disc. mask | not(disc. mask) | scale={len(Gs)} | shape={discriminators_mask.shape}', opt)
+
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
     z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
     z_opt = m_noise(z_opt)
@@ -94,12 +106,12 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
     schedulerD = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerD,milestones=[1600],gamma=opt.gamma)
     schedulerG = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerG,milestones=[1600],gamma=opt.gamma)
 
-    errD2plot = []
-    errG2plot = []
+    errD2plot   = []
+    errG2plot   = []
     D_real2plot = []
     D_fake2plot = []
-    z_opt2plot = []
-    norm = []
+    z_opt2plot  = []
+    norm        = []
 
     norm.append(1)
     norm.append((h*w)/discriminators_mask.sum().item())
@@ -124,10 +136,11 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             netD.zero_grad()
 
             output = netD(real).to(opt.device)
-            ignore = (output.detach()*discriminators_mask_not).sum().item()
+            sum_of_masked   = (output.detach() * discriminators_mask_not).sum().item() # Y - sum of pixels inside the masked area
+            sum_of_unmasked = (output.detach() * discriminators_mask).sum().item()     # X - sum of pixels outside the masked area
             output = output*discriminators_mask
-            norm[2] = (output.sum().item() + ignore)/output.sum().item()
-            #D_real_map = output.detach()
+            norm[2] = (sum_of_unmasked+sum_of_masked)/sum_of_unmasked
+            D_real_map = output.detach()
             errD_real = -(output.mean())*norm[opt.norm] #-a
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
@@ -190,7 +203,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
         for j in range(opt.Gsteps):
             netG.zero_grad()
             output = netD(fake)
-            #D_fake_map = output.detach()
+            D_fake_map = output.detach()
             errG = -output.mean()
             errG.backward(retain_graph=True)
             if alpha!=0:
@@ -222,8 +235,8 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
         if epoch % 500 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
-            #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
+            plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
+            plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
             #plt.imsave('%s/z_opt.png'    % (opt.outf), functions.convert_image_np(z_opt.detach()), vmin=0, vmax=1)
             #plt.imsave('%s/prev.png'     %  (opt.outf), functions.convert_image_np(prev), vmin=0, vmax=1)
             #plt.imsave('%s/noise.png'    %  (opt.outf), functions.convert_image_np(noise), vmin=0, vmax=1)
@@ -231,6 +244,13 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
 
             torch.save(z_opt, '%s/z_opt.pth' % (opt.outf))
+
+            with open('%s/D_real2plot' % (opt.outf), "wb") as fp:  # Pickling
+                pickle.dump(D_real2plot, fp)
+            with open('%s/D_fake2plot' % (opt.outf), "wb") as fp:  # Pickling
+                pickle.dump(D_fake2plot, fp)
+            # with open('%s/D_real2plot' % (opt.outf), "rb") as fp:  # Unpickling
+            #     D_fake2plot = pickle.load(fp)
 
         schedulerD.step()
         schedulerG.step()
