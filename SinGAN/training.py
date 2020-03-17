@@ -81,7 +81,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     _, _, h, w = mask.size()
     discriminators_mask = mask.detach()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
-
+    discriminators_mask_not = (1-discriminators_mask).detach()
     _, _, h, w = discriminators_mask.size()
 
     fixed_noise = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy],device=opt.device)
@@ -99,6 +99,11 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
     D_real2plot = []
     D_fake2plot = []
     z_opt2plot = []
+    norm = []
+
+    norm.append(1)
+    norm.append((h*w)/discriminators_mask.sum().item())
+    norm.append(1) #placeholder
 
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
@@ -118,14 +123,12 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             # train with real
             netD.zero_grad()
 
-            norm = (h*w)/discriminators_mask.sum()
             output = netD(real).to(opt.device)
-            output = output*discriminators_mask*norm
+            ignore = (output.detach()*discriminators_mask_not).sum().item()
+            output = output*discriminators_mask
+            norm[2] = (output.sum().item() + ignore)/output.sum().item()
             #D_real_map = output.detach()
-            errD_real = -output.mean() #-a
-            if epoch % 25 == 0 or epoch == (opt.niter-1):
-                print('errD_real %f' % errD_real)
-
+            errD_real = -(output.mean())*norm[opt.norm] #-a
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
 
@@ -169,9 +172,6 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             fake = netG(noise.detach(),prev)
             output = netD(fake.detach())
             errD_fake = output.mean()
-            if epoch % 25 == 0 or epoch == (opt.niter-1):
-                print('errD_fake %f' % errD_fake)
-
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 

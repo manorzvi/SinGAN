@@ -3,6 +3,12 @@ from SinGAN.manipulate import *
 from SinGAN.training import *
 import SinGAN.functions as functions
 
+def ParseNorm(s):
+    norm_mode = int(s)
+    if (norm_mode != 0 and norm_mode != 1 and norm_mode != 2):
+        raise argparse.ArgumentTypeError("valid normalization modes are 0,1,2.")
+    return norm_mode
+
 def ParseCoords(s):
     mask_coords = s.replace('(', '').replace(')', '').split(',')
     mask_coords = [int(coord) for coord in mask_coords]
@@ -17,6 +23,9 @@ if __name__ == '__main__':
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')
     parser.add_argument('--input_name', help='input image name', required=True)
     parser.add_argument('--mode', help='task to be done', default='train')
+    parser.add_argument('--norm', default='0', type=ParseNorm,
+                        help="normalization mode: \n"
+                             "0:none, 1:blind, 2:natural. ")
     parser.add_argument('--mask_coords', type=ParseCoords,
                         help="Mask's coordinates in format of: (y0,y1),(x0,x1), \n"
                              "where: y0, y1 are longitude coordinates \n"
