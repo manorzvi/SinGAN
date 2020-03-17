@@ -13,6 +13,7 @@ from SinGAN.imresize import imresize
 import os
 import random
 from sklearn.cluster import KMeans
+import torchvision.utils as vutils
 
 
 # custom weights initialization called on netG and netD
@@ -364,3 +365,11 @@ def dilate_mask(mask,opt):
     plt.imsave('%s/%s_mask_dilated.png' % (opt.ref_dir, opt.ref_name[:-4]), convert_image_np(mask), vmin=0,vmax=1)
     mask = (mask-mask.min())/(mask.max()-mask.min())
     return mask
+
+def plot_minibatch(minibatch: torch.Tensor, title, opt):
+    plt.figure(figsize=(12, 12))
+    plt.axis("off")
+    if title:
+        plt.title(title)
+    plt.imshow(np.transpose(vutils.make_grid(minibatch.to(opt.device), normalize=True).cpu(), (1, 2, 0)))
+    plt.show()

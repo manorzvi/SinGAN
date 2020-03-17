@@ -30,6 +30,8 @@ if __name__ == '__main__':
                         help="Mask's coordinates in format of: (y0,y1),(x0,x1), \n"
                              "where: y0, y1 are longitude coordinates \n"
                              "       x1, y1 are latitude coordinates. ")
+    parser.add_argument('--plotting', action='store_true', default=False)
+
     opt = parser.parse_args()
     opt = functions.post_config(opt)
     Gs = []
