@@ -133,7 +133,8 @@ def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,g
 
             if n == len(reals)-1:
                 if opt.mode == 'train':
-                    dir2save = '%s/RandomSamples/%s/gen_start_scale=%d' % (opt.out, opt.input_name[:-4], gen_start_scale)
+                    dir2save = '%s/RandomSamples/%s,min_size=%d,max_size=%d/gen_start_scale=%d' % \
+                               (opt.out, opt.input_name[:-4], opt.min_size, opt.max_size, gen_start_scale)
                 else:
                     dir2save = functions.generate_dir2save(opt)
                 try:
