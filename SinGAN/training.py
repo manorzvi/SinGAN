@@ -87,8 +87,17 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
     alpha = opt.alpha
 
+    # Here we calculate the decrease in output size due to conv layers.
+    # required for setting the size of discriminators map.
+    # TODO: currently, calculation doesn't consider opt.stride
+    if (opt.ker_size % 2 == 0):
+        r = (opt.num_layer)*(opt.ker_size-1)
+    else: #(opt.ker_size % 2 != 0):
+        r = (opt.num_layer)*(opt.ker_size-1)/2
+    r = int(r)
+
     _, _, h, w = mask.size()
-    discriminators_mask = mask.detach()[:,:,5:h-5,5:w-5][:,0,:,:].unsqueeze(0)
+    discriminators_mask = mask.detach()[:,:,r:h-r,r:w-r][:,0,:,:].unsqueeze(0)
     discriminators_mask_not = (1-discriminators_mask).detach()
     _, _, h, w = discriminators_mask.size()
 
