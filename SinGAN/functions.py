@@ -200,8 +200,9 @@ def adjust_scales2image(real_,opt):
     opt.stop_scale = opt.num_scales - scale2stop
     opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
     #taking spare pixels for mask in case needed
-    opt.mask_coords[::2] = np.floor(np.array(opt.mask_coords[::2]).astype(np.float) * opt.scale1)
-    opt.mask_coords[1::2] = np.ceil(np.array(opt.mask_coords[1::2]).astype(np.float) * opt.scale1)
+    if opt.mode != 'random_samples':
+        opt.mask_coords[::2] = np.floor(np.array(opt.mask_coords[::2]).astype(np.float) * opt.scale1)
+        opt.mask_coords[1::2] = np.ceil(np.array(opt.mask_coords[1::2]).astype(np.float) * opt.scale1)
     real = imresize(real_, opt.scale1, opt)
     #opt.scale_factor = math.pow(opt.min_size / (real.shape[2]), 1 / (opt.stop_scale))
     opt.scale_factor = math.pow(opt.min_size/(min(real.shape[2],real.shape[3])),1/(opt.stop_scale))
@@ -249,10 +250,10 @@ def load_trained_pyramid(opt, mode_='train'):
         opt.mode = mode
     dir = generate_dir2save(opt)
     if(os.path.exists(dir)):
-        Gs = torch.load('%s/Gs.pth' % dir)
-        Zs = torch.load('%s/Zs.pth' % dir)
-        reals = torch.load('%s/reals.pth' % dir)
-        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir)
+        Gs       = torch.load('%s/Gs.pth'       % dir, map_location=opt.device)
+        Zs       = torch.load('%s/Zs.pth'       % dir, map_location=opt.device)
+        reals    = torch.load('%s/reals.pth'    % dir, map_location=opt.device)
+        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir, map_location=opt.device)
     else:
         print('no appropriate trained model is exist, please train first')
     opt.mode = mode
@@ -277,8 +278,11 @@ def generate_dir2save(opt):
     elif (opt.mode == 'paint_train') :
         dir2save = 'TrainedModels/%s/scale_factor=%f_paint/start_scale=%d' % (opt.input_name[:-4], opt.scale_factor_init,opt.paint_start_scale)
     elif opt.mode == 'random_samples':
-        dir2save = '%s/RandomSamples/%s,min_size=%d,max_size=%d/gen_start_scale=%d' % \
-                   (opt.out, opt.input_name[:-4], opt.min_size, opt.max_size, opt.gen_start_scale)
+        # dir2save = '%s/RandomSamples/%s,min_size=%d,max_size=%d/gen_start_scale=%d' % \
+        #            (opt.out, opt.input_name[:-4], opt.min_size, opt.max_size, opt.gen_start_scale)
+        dir2save = os.path.join('%s/RandomSamples' % opt.out, '/'.join(opt.model_dir.split('/')[1:]),
+                                'gen_start_scale=%d' % opt.gen_start_scale)
+        # print(f'[I] - dir2save={dir2save}')
     elif opt.mode == 'random_samples_arbitrary_sizes':
         dir2save = '%s/RandomSamples_ArbitrerySizes/%s/scale_v=%f_scale_h=%f' % (opt.out,opt.input_name[:-4], opt.scale_v, opt.scale_h)
     elif opt.mode == 'animation':
@@ -309,7 +313,7 @@ def post_config(opt):
 
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
-    print("Random Seed: ", opt.manualSeed)
+    # print("Random Seed: ", opt.manualSeed)
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
     if torch.cuda.is_available() and opt.not_cuda:
