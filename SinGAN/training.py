@@ -264,6 +264,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
         schedulerD.step()
         schedulerG.step()
 
+    plt.imsave('%s/masked_img.png'   % (opt.outf), functions.convert_image_np(real*mask))
     functions.save_networks(netG,netD,z_opt,opt)
     return z_opt,in_s,netG
 
