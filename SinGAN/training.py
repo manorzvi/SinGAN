@@ -203,7 +203,6 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             errD = errD_real + errD_fake + gradient_penalty
             optimizerD.step()
 
-        errD2plot.append(errD.detach())
 
         ############################
         # (2) Update G network: maximize D(G(z))
@@ -233,7 +232,8 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
 
             optimizerG.step()
 
-        errG2plot.append(errG.detach()+rec_loss)
+        errD2plot.append(errD.detach())
+        errG2plot.append(errG.detach())
         D_real2plot.append(D_x)
         D_fake2plot.append(D_G_z)
         z_opt2plot.append(rec_loss)
@@ -260,6 +260,14 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
                 pickle.dump(D_fake2plot, fp)
             # with open('%s/D_real2plot' % (opt.outf), "rb") as fp:  # Unpickling
             #     D_fake2plot = pickle.load(fp)
+
+            with open('%s/errD2plot' % (opt.outf), "wb") as fp:  # Pickling
+                pickle.dump(errD2plot, fp)
+            with open('%s/errG2plot' % (opt.outf), "wb") as fp:  # Pickling
+                pickle.dump(errG2plot, fp)
+            with open('%s/z_opt2plot' % (opt.outf), "wb") as fp:  # Pickling
+                pickle.dump(z_opt2plot, fp)
+
 
         schedulerD.step()
         schedulerG.step()
