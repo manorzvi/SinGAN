@@ -126,6 +126,8 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
     norm.append((h*w)/discriminators_mask.sum().item())
     norm.append(1) #placeholder
 
+    plt.imsave('%s/masked_img.png'   % (opt.outf), functions.convert_image_np(real*mask))
+
     for epoch in range(opt.niter):
         if (Gs == []) & (opt.mode != 'SR_train'):
             if (epoch == 0):
@@ -197,7 +199,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
-            gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device)
+            gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device, discriminators_mask*norm[opt.norm])
             gradient_penalty.backward()
 
             errD = errD_real + errD_fake + gradient_penalty
@@ -272,6 +274,7 @@ def train_single_scale(netD,netG,reals,masks,Gs,Zs,in_s,NoiseAmp,opt,centers=Non
         schedulerD.step()
         schedulerG.step()
 
+    # plt.imsave('%s/masked_img.png'   % (opt.outf), functions.convert_image_np(real*mask))
     functions.save_networks(netG,netD,z_opt,opt)
     return z_opt,in_s,netG
 
