@@ -86,12 +86,12 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
+def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50,masks=None):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
         in_s = torch.full(reals[0].shape, 0, device=opt.device)
     images_cur = []
-    for G,Z_opt,noise_amp in zip(Gs,Zs,NoiseAmp):
+    for G,Z_opt,noise_amp,mask in zip(Gs,Zs,NoiseAmp,masks):
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
         m = nn.ZeroPad2d(int(pad1))
         nzx = (Z_opt.shape[2]-pad1*2)*scale_v
@@ -126,7 +126,20 @@ def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,g
                     I_prev = m(I_prev)
 
             if n < gen_start_scale:
-                z_curr = Z_opt
+                # z_curr = Z_opt
+                if opt.mask_coords:
+                    if i == 0:
+                        mask = m(mask)
+                    # z_curr_ = (Z_opt * mask)
+                    z_curr *= (1-mask)
+                    z_curr += Z_opt * mask
+                else:
+                    z_curr = Z_opt
+
+                if opt.plotting:
+                    functions.plot_minibatch(torch.cat((Z_opt, mask, z_curr), dim=0),
+                                             f'Z_opt | mask | z_curr | '
+                                             f'scale={n} | shape={mask.shape}', opt)
 
             z_in = noise_amp*(z_curr)+I_prev
             I_curr = G(z_in.detach(),I_prev)
