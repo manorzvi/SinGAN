@@ -1,114 +1,69 @@
 #!/bin/bash
 
-# Setup env
-source $HOME/anaconda3/etc/profile.d/conda.sh
-conda activate cs236781-hw
 echo "hello from $(python --version) in $(which python)"
-
 python -c 'import torch; print(f"Am I playing on the Cuda? {torch.cuda.is_available()}")'
-python -c 'print("This is the real Shit!")'
-python -c 'print("We are harvesting the power of CS faculty for our needs! ya we are hackers!")'
 
+python main_train.py --input_name western_wall.jpg    						--input_dir Input/Images --mask_coords "(370,630),(480,600)"     		--norm 1
+python random_samples.py --input_name western_wall.jpg    			--model_dir TrainedModels/western_wall/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    			--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name western_wall.jpg    			--model_dir TrainedModels/western_wall/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    			--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name western_wall.jpg    			--model_dir TrainedModels/western_wall/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    			--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(370,630),(480,600)"
 
-echo "|--------------|"
-echo "|---TRAINING---|"
-echo "|--------------|"
+python main_train.py --input_name windows.jpg         						--input_dir Input/Images --mask_coords "(200,280),(700,760)"     		--norm 1
+python random_samples.py --input_name windows.jpg    					--model_dir TrainedModels/windows/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    					--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name windows.jpg   	 				--model_dir TrainedModels/windows/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    					--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name windows.jpg   	 				--model_dir TrainedModels/windows/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    					--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(200,280),(700,760)"
 
-echo "[I] - woman_bricks 25-250"
-echo "-------------------------"
-python main_train.py --input_name woman_bricks.jpg   --input_dir Input/Images --mask_coords "(1050,3200),(2600,3500)" --norm 1
-echo "[I] - western_wall 25-250"
-echo "-------------------------"
-python main_train.py --input_name western_wall.jpg   --input_dir Input/Images --mask_coords "(370,630),(480,600)"     --norm 1
-echo "[I] - windows 25-250"
-echo "--------------------"
-python main_train.py --input_name windows.jpg        --input_dir Input/Images --mask_coords "(200,280),(700,760)"     --norm 1
-echo "[I] - climb1 25-250"
-echo "-------------------"
-python main_train.py --input_name climb1.jpg         --input_dir Input/Images --mask_coords "(120,290),(800,870)"     --norm 1
-echo "[I] - balloons 25-250 (big, colorful balloon)"
-echo "---------------------------------------------"
-python main_train.py --input_name balloons4big_balloon.png         --input_dir Input/Images --mask_coords "(0,70),(125,180)"        --norm 1
-echo "[I] - balloons 25-250 (small, yellow balloon)"
-echo "---------------------------------------------"
-python main_train.py --input_name balloons4small_balloon.png       --input_dir Input/Images --mask_coords "(100,130),(100,120)"     --norm 1
-echo "[I] - nature5 25-250 (face)"
-echo "---------------------------"
-python main_train.py --input_name nature5_4face.jpg        --input_dir Input/Images --mask_coords "(1200,1900),(1450,2100)" --norm 1
-echo "[I] - nature5 25-250 (leg)"
-echo "---------------------------"
-python main_train.py --input_name nature5_4leg.jpg         --input_dir Input/Images --mask_coords "(1250,1550),(2600,2950)" --norm 1
-echo "[I] - nature6 25-250"
-echo "--------------------"
-python main_train.py --input_name nature6.jpg        --input_dir Input/Images --mask_coords "(1300,2600),(2550,3000)" --norm 1
+python main_train.py --input_name woman_bricks.jpg   				 	--input_dir Input/Images --mask_coords "(1050,3200),(2600,3500)" 	--norm 1
+python random_samples.py --input_name woman_bricks.jpg    		--model_dir TrainedModels/woman_bricks/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/  			--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name woman_bricks.jpg   			--model_dir TrainedModels/woman_bricks/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/  			--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name woman_bricks.jpg   			--model_dir TrainedModels/woman_bricks/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/  			--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(1050,3200),(2600,3500)"
 
+python main_train.py --input_name climb1.jpg          							--input_dir Input/Images --mask_coords "(120,290),(800,870)"     		--norm 1
+python random_samples.py --input_name climb1.jpg          				--model_dir TrainedModels/climb1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          					--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name climb1.jpg          				--model_dir TrainedModels/climb1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          					--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name climb1.jpg          				--model_dir TrainedModels/climb1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          					--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(120,290),(800,870)"
 
-echo "|--------------|"
-echo "|---SAMPLING---|"
-echo "|--------------|"
+python main_train.py --input_name nature5.jpg         							--input_dir Input/Images --mask_coords "(1245,1875),(1495,2080)" 	--norm 1
+python random_samples.py --input_name nature5.jpg          				--model_dir TrainedModels/nature5/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name nature5.jpg          				--model_dir TrainedModels/nature5/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name nature5.jpg          				--model_dir TrainedModels/nature5/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         			 	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(1245,1875),(1495,2080)"
 
+python main_train.py --input_name balloons_yellow.png         			--input_dir Input/Images --mask_coords "(100,125),(100,125)" 			--norm 1
+python random_samples.py --input_name balloons_yellow.png			--model_dir TrainedModels/balloons_yellow/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name balloons_yellow.png         --model_dir TrainedModels/balloons_yellow/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name balloons_yellow.png         --model_dir TrainedModels/balloons_yellow/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(100,125),(100,125)"
 
-echo "[I] - woman bricks random sampling start scale 0"
-echo "------------------------------------------------"
-python random_samples.py --input_name woman_bricks.jpg    --model_dir TrainedModels/woman_bricks/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - woman bricks random sampling start scale 1"
-echo "------------------------------------------------"
-python random_samples.py --input_name woman_bricks.jpg    --model_dir TrainedModels/woman_bricks/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
-echo "[I] - western_wall random sampling start scale 0"
-echo "------------------------------------------------"
-python random_samples.py --input_name western_wall.jpg    --model_dir TrainedModels/western_wall/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - western_wall random sampling start scale 1"
-echo "------------------------------------------------"
-python random_samples.py --input_name western_wall.jpg    --model_dir TrainedModels/western_wall/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/    --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
-echo "[I] - climb1 random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name climb1.jpg          --model_dir TrainedModels/climb1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - climb1 random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name climb1.jpg           --model_dir TrainedModels/climb1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
-echo "[I] - windows random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name windows.jpg          --model_dir TrainedModels/windows/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - windows random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name windows.jpg          --model_dir TrainedModels/windows/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name balloons_color.png         				--input_dir Input/Images --mask_coords "(0,70),(130,180)" 					--norm 1
+python random_samples.py --input_name balloons_color.png          	--model_dir TrainedModels/balloons_color/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name balloons_color.png          	--model_dir TrainedModels/balloons_color/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name balloons_color.png          	--model_dir TrainedModels/balloons_color/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(0,70),(130,180)"
 
-echo "[I] - balloons (big) random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name balloons4big_balloon.png --model_dir TrainedModels/balloons4big_balloon/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - balloons (big) random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name balloons4big_balloon.png --model_dir TrainedModels/balloons4big_balloon/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name chinese1.jpg        							--input_dir Input/Images --mask_coords "(90,380),(120,350)" 				--norm 1
+python random_samples.py --input_name chinese1.png					--model_dir TrainedModels/chinese1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name chinese1.png					--model_dir TrainedModels/chinese1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name chinese1.png					--model_dir TrainedModels/chinese1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(90,380),(120,350)"
 
-echo "[I] - balloons (small) random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name balloons4small_balloon.png --model_dir TrainedModels/balloons4small_balloon/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - balloons (small) random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name balloons4small_balloon.png --model_dir TrainedModels/balloons4small_balloon/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name chinese_woman.jpg        				--input_dir Input/Images --mask_coords "(340,1580),(550,980)" 			--norm 1
+python random_samples.py --input_name chinese_woman.png		--model_dir TrainedModels/chinese_woman/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name chinese_woman.png		--model_dir TrainedModels/chinese_woman/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name chinese_woman.png		--model_dir TrainedModels/chinese_woman/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          	--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(340,1580),(550,980)"
 
-echo "[I] - nature5 (face) random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name nature5_4face.jpg --model_dir TrainedModels/nature5_4face/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - nature5 (face) random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name nature5_4face.jpg --model_dir TrainedModels/nature5_4face/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name field_hockey1.jpg        					--input_dir Input/Images --mask_coords "(170,660),(750,940)" 			--norm 1
+python random_samples.py --input_name field_hockey1.png			--model_dir TrainedModels/field_hockey1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          		--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name field_hockey1.png			--model_dir TrainedModels/field_hockey1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          		--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name field_hockey1.png			--model_dir TrainedModels/field_hockey1/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          		--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(170,660),(750,940)"
 
-echo "[I] - nature5 (leg) random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name nature5_4leg.jpg --model_dir TrainedModels/nature5_4leg/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - nature5 (leg) random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name nature5_4leg.jpg --model_dir TrainedModels/nature5_4leg/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name indoor3.jpg			        				--input_dir Input/Images --mask_coords "(1460,3220),(1170,1700)" 	--norm 1
+python random_samples.py --input_name indoor3.png						--model_dir TrainedModels/indoor3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name indoor3.png						--model_dir TrainedModels/indoor3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name indoor3.png						--model_dir TrainedModels/indoor3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(1460,3220),(1170,1700)"
 
-echo "[I] - nature6 random sampling start scale 0"
-echo "------------------------------------------"
-python random_samples.py --input_name nature6.jpg          --model_dir TrainedModels/nature6/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/         --mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250 &
-echo "[I] - nature6 random sampling start scale 1"
-echo "------------------------------------------"
-python random_samples.py --input_name nature6.jpg          --model_dir TrainedModels/nature6/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          --mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 &
+python main_train.py --input_name nature3.jpg      				  				--input_dir Input/Images --mask_coords "(1350,2410),(1600,2010)" 	--norm 1
+python random_samples.py --input_name nature3.png						--model_dir TrainedModels/nature3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name nature3.png						--model_dir TrainedModels/nature3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name nature3.png						--model_dir TrainedModels/nature3/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(1350,2410),(1600,2010)"
 
-
-
-
-
+python main_train.py --input_name nature7.jpg        							--input_dir Input/Images --mask_coords "(2500,3480),(1980,2340)" 	--norm 1
+python random_samples.py --input_name nature7.png						--model_dir TrainedModels/nature7/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 0 --min_size 25 --max_size 250
+python random_samples.py --input_name nature7.png						--model_dir TrainedModels/nature7/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250
+#python random_samples.py --input_name nature7.png						--model_dir TrainedModels/nature7/scale_factor\=0.750000\,alpha\=10\,min_size\=25\,max_size\=250/          				--mode random_samples --gen_start_scale 1 --min_size 25 --max_size 250 --mask_coords "(2500,3480),(1980,2340)"
