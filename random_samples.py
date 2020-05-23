@@ -33,10 +33,13 @@ if __name__ == '__main__':
 
     opt = parser.parse_args()
     opt = functions.post_config(opt)
+
     Gs = []
     Zs = []
     reals = []
     NoiseAmp = []
+    masks = None
+
     dir2save = functions.generate_dir2save(opt)
     if dir2save is None:
         print('task does not exist')
@@ -64,7 +67,8 @@ if __name__ == '__main__':
                                                  f'real | mask | real * mask | scale={i} | shape={r.shape}', opt)
 
             in_s = functions.generate_in2coarsest(reals,1,1,opt)
-            SinGAN_generate(Gs, Zs, reals, NoiseAmp, opt, gen_start_scale=opt.gen_start_scale, masks=masks)
+            SinGAN_generate(Gs, Zs, reals, NoiseAmp, opt,
+                            gen_start_scale=opt.gen_start_scale, masks=masks)
 
         elif opt.mode == 'random_samples_arbitrary_sizes':
             real = functions.read_image(opt)
